@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Camera } from 'lucide-react'
+import { ArrowLeft, Plus, Camera, Truck, Package } from 'lucide-react'
 import {
   getOrder, getOrderRugs, updateOrderStatus,
   getOrderPayments, createPayment, createRug,
-  updateRugStatus, uploadRugPhoto
+  updateRugStatus, uploadRugPhoto, createPickup, createDelivery, getDrivers
 } from '../api/endpoints'
 import { useAuthStore } from '../stores/auth'
 import { Button } from '../components/ui/Button'
@@ -13,7 +13,7 @@ import { Input, Select, Textarea } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { orderStatusBadge, paymentStatusBadge, rugStatusBadge } from '../components/ui/Badge'
 import { useForm } from 'react-hook-form'
-import type { Rug } from '../types'
+import type { Rug, User } from '../types'
 
 const ORDER_STATUS_FLOW = [
   'pickup_scheduled', 'picked_up', 'received_at_spa',
@@ -38,6 +38,8 @@ export function OrderDetailPage() {
   const qc = useQueryClient()
   const [showAddRug, setShowAddRug] = useState(false)
   const [showAddPayment, setShowAddPayment] = useState(false)
+  const [showSchedulePickup, setShowSchedulePickup] = useState(false)
+  const [showScheduleDelivery, setShowScheduleDelivery] = useState(false)
   const [selectedRug, setSelectedRug] = useState<Rug | null>(null)
 
   const { data: order, isLoading: loadingOrder } = useQuery({
@@ -47,12 +49,18 @@ export function OrderDetailPage() {
 
   const { data: rugs = [] } = useQuery({
     queryKey: ['order-rugs', orderId],
-    queryFn: () => getOrderRugs(orderId).then((r) => r.data),
+    queryFn: () => getOrderRugs(orderId).then((r) => {
+      const d = r.data as any
+      return Array.isArray(d) ? d : d.results ?? []
+    }),
   })
 
   const { data: payments = [] } = useQuery({
     queryKey: ['order-payments', orderId],
-    queryFn: () => getOrderPayments(orderId).then((r) => r.data),
+    queryFn: () => getOrderPayments(orderId).then((r) => {
+      const d = r.data as any
+      return Array.isArray(d) ? d : d.results ?? []
+    }),
   })
 
   const statusMutation = useMutation({
@@ -102,12 +110,29 @@ export function OrderDetailPage() {
             {order.notes && <div><span className="text-gray-500">Notas: </span>{order.notes}</div>}
           </div>
 
-          {canChangeStatus && nextStatus && (
+          {canChangeStatus && order.status === 'pickup_scheduled' && (
             <Button
               className="mt-4 w-full"
-              onClick={() => statusMutation.mutate(nextStatus)}
+              variant="secondary"
+              onClick={() => setShowSchedulePickup(true)}
+            >
+              <Truck size={14} />
+              Agendar recolección
+            </Button>
+          )}
+          {canChangeStatus && nextStatus && order.status !== 'pickup_scheduled' && (
+            <Button
+              className="mt-4 w-full"
+              onClick={() => {
+                if (nextStatus === 'delivery_scheduled') {
+                  setShowScheduleDelivery(true)
+                } else {
+                  statusMutation.mutate(nextStatus)
+                }
+              }}
               loading={statusMutation.isPending}
             >
+              {nextStatus === 'delivery_scheduled' ? <Package size={14} /> : null}
               → {STATUS_LABELS[nextStatus]}
             </Button>
           )}
@@ -208,6 +233,26 @@ export function OrderDetailPage() {
         )}
       </div>
 
+      <SchedulePickupModal
+        open={showSchedulePickup}
+        orderId={orderId}
+        onClose={() => setShowSchedulePickup(false)}
+        onCreated={() => {
+          setShowSchedulePickup(false)
+          qc.invalidateQueries({ queryKey: ['order', orderId] })
+        }}
+      />
+
+      <ScheduleDeliveryModal
+        open={showScheduleDelivery}
+        orderId={orderId}
+        onClose={() => setShowScheduleDelivery(false)}
+        onCreated={() => {
+          setShowScheduleDelivery(false)
+          statusMutation.mutate('delivery_scheduled')
+        }}
+      />
+
       <AddRugModal
         open={showAddRug}
         orderId={orderId}
@@ -293,6 +338,74 @@ function AddPaymentModal({ open, orderId, onClose, onCreated }: { open: boolean;
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
           <Button type="submit" loading={mutation.isPending}>Registrar</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function SchedulePickupModal({ open, orderId, onClose, onCreated }: { open: boolean; orderId: number; onClose: () => void; onCreated: () => void }) {
+  const { register, handleSubmit } = useForm({ defaultValues: { scheduled_at: '', driver: '' } })
+
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['drivers'],
+    queryFn: () => getDrivers().then((r) => {
+      const d = r.data as any
+      return (Array.isArray(d) ? d : d.results ?? []) as User[]
+    }),
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: { scheduled_at: string; driver: string }) =>
+      createPickup({ service_order: orderId, scheduled_at: data.scheduled_at, driver: Number(data.driver) }),
+    onSuccess: onCreated,
+  })
+
+  return (
+    <Modal open={open} onClose={onClose} title="Agendar recolección">
+      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="flex flex-col gap-4">
+        <Input label="Fecha y hora" type="datetime-local" {...register('scheduled_at', { required: true })} />
+        <Select label="Chofer asignado" {...register('driver', { required: true })} options={[
+          { value: '', label: 'Seleccionar chofer...' },
+          ...drivers.map((d) => ({ value: String(d.id), label: d.first_name ? `${d.first_name} ${d.last_name}` : d.username })),
+        ]} />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={mutation.isPending}>Agendar</Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
+function ScheduleDeliveryModal({ open, orderId, onClose, onCreated }: { open: boolean; orderId: number; onClose: () => void; onCreated: () => void }) {
+  const { register, handleSubmit } = useForm({ defaultValues: { scheduled_at: '', driver: '' } })
+
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['drivers'],
+    queryFn: () => getDrivers().then((r) => {
+      const d = r.data as any
+      return (Array.isArray(d) ? d : d.results ?? []) as User[]
+    }),
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: { scheduled_at: string; driver: string }) =>
+      createDelivery({ service_order: orderId, scheduled_at: data.scheduled_at, driver: Number(data.driver) }),
+    onSuccess: onCreated,
+  })
+
+  return (
+    <Modal open={open} onClose={onClose} title="Agendar entrega">
+      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="flex flex-col gap-4">
+        <Input label="Fecha y hora" type="datetime-local" {...register('scheduled_at', { required: true })} />
+        <Select label="Chofer asignado" {...register('driver', { required: true })} options={[
+          { value: '', label: 'Seleccionar chofer...' },
+          ...drivers.map((d) => ({ value: String(d.id), label: d.first_name ? `${d.first_name} ${d.last_name}` : d.username })),
+        ]} />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" loading={mutation.isPending}>Agendar entrega</Button>
         </div>
       </form>
     </Modal>

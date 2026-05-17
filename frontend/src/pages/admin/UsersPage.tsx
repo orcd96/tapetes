@@ -32,7 +32,7 @@ export function UsersPage() {
 
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
-    queryFn: () => getUsers().then((r) => r.data),
+    queryFn: () => getUsers().then((r) => (Array.isArray(r.data) ? r.data : (r.data as { results: User[] }).results)),
   })
 
   const toggleMutation = useMutation({

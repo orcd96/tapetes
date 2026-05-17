@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer, MeSerializer
-from .permissions import IsAdmin
+from .permissions import IsAdmin, IsAdminOrAgentOrManager
 
 
 class MeView(APIView):
@@ -20,8 +20,19 @@ class MeView(APIView):
 
 
 class UserListCreateView(generics.ListCreateAPIView):
-    queryset = User.objects.all()
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAdminOrAgentOrManager]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdmin()]
+        return [IsAdminOrAgentOrManager()]
+
+    def get_queryset(self):
+        qs = User.objects.filter(is_active=True).order_by('first_name', 'username')
+        role = self.request.query_params.get('role')
+        if role:
+            qs = qs.filter(role=role)
+        return qs
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

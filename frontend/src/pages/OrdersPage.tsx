@@ -139,7 +139,10 @@ function NewOrderModal({ open, onClose, onCreated }: NewOrderModalProps) {
 
   const { data: clients = [] } = useQuery({
     queryKey: ['clients-search', clientSearch],
-    queryFn: () => getClients(clientSearch).then((r) => r.data),
+    queryFn: () => getClients(clientSearch).then((r) => {
+      const d = r.data as any
+      return Array.isArray(d) ? d : d.results ?? []
+    }),
     enabled: clientSearch.length > 1,
   })
 

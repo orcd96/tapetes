@@ -89,5 +89,5 @@ class WasherRugListView(generics.ListAPIView):
     def get_queryset(self):
         return Rug.objects.filter(
             assigned_washer=self.request.user,
-            status__in=['received', 'washing'],
+            status__in=['received', 'washing', 'ready'],
         ).prefetch_related('photos')

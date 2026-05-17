@@ -15,7 +15,8 @@ export const refreshToken = (refresh: string) =>
 export const getMe = () => api.get<User>('/users/me/')
 
 // Users
-export const getUsers = () => api.get<User[]>('/users/')
+export const getUsers = (params?: Record<string, string>) => api.get<User[]>('/users/', { params })
+export const getDrivers = () => api.get<User[]>('/users/', { params: { role: 'driver' } })
 export const createUser = (data: Partial<User> & { password: string }) =>
   api.post<User>('/users/', data)
 export const updateUser = (id: number, data: Partial<User>) =>
@@ -60,15 +61,15 @@ export const uploadRugPhoto = (rugId: number, formData: FormData) =>
 export const getWasherRugs = () => api.get<Rug[]>('/rugs/washer/')
 
 // Logistics
-export const getDriverRoute = () => api.get<{ pickups: Pickup[]; deliveries: Delivery[] }>('/driver/route/')
+export const getDriverRoute = () => api.get<{ pickups: Pickup[]; deliveries: Delivery[] }>('/logistics/driver/route/')
 export const updatePickup = (id: number, data: Partial<Pickup>) =>
-  api.patch<Pickup>(`/driver/pickups/${id}/`, data)
+  api.patch<Pickup>(`/logistics/driver/pickups/${id}/`, data)
 export const updateDelivery = (id: number, data: Partial<Delivery>) =>
-  api.patch<Delivery>(`/driver/deliveries/${id}/`, data)
-export const getPickups = () => api.get<Pickup[]>('/pickups/')
-export const createPickup = (data: Partial<Pickup>) => api.post<Pickup>('/pickups/', data)
-export const getDeliveries = () => api.get<Delivery[]>('/deliveries/')
-export const createDelivery = (data: Partial<Delivery>) => api.post<Delivery>('/deliveries/', data)
+  api.patch<Delivery>(`/logistics/driver/deliveries/${id}/`, data)
+export const getPickups = () => api.get<Pickup[]>('/logistics/pickups/')
+export const createPickup = (data: Partial<Pickup>) => api.post<Pickup>('/logistics/pickups/', data)
+export const getDeliveries = () => api.get<Delivery[]>('/logistics/deliveries/')
+export const createDelivery = (data: Partial<Delivery>) => api.post<Delivery>('/logistics/deliveries/', data)
 
 // Payments
 export const getOrderPayments = (orderId: number) =>

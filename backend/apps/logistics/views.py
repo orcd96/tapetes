@@ -17,13 +17,11 @@ class DriverRouteView(APIView):
         pickups = Pickup.objects.filter(
             driver=request.user,
             scheduled_at__date=today,
-            status__in=['pending', 'in_progress'],
-        ).select_related('service_order__client')
+        ).select_related('service_order__client').order_by('scheduled_at')
         deliveries = Delivery.objects.filter(
             driver=request.user,
             scheduled_at__date=today,
-            status__in=['pending', 'in_progress'],
-        ).select_related('service_order__client')
+        ).select_related('service_order__client').order_by('scheduled_at')
         return Response({
             'pickups': PickupSerializer(pickups, many=True).data,
             'deliveries': DeliverySerializer(deliveries, many=True).data,

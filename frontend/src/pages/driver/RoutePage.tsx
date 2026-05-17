@@ -168,7 +168,10 @@ function PickupModal({ pickup, onClose, onConfirm, loading }: {
 
   const { data: rugs = [] } = useQuery({
     queryKey: ['order-rugs', pickup.service_order],
-    queryFn: () => getOrderRugs(pickup.service_order).then((r) => r.data),
+    queryFn: () => getOrderRugs(pickup.service_order).then((r) => {
+      const d = r.data as any
+      return Array.isArray(d) ? d : d.results ?? []
+    }),
   })
 
   const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>, rugId: number) => {

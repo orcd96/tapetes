@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/admin/DashboardPage'
 import { OrdersPage } from './pages/OrdersPage'
 import { OrderDetailPage } from './pages/OrderDetailPage'
 import { ClientsPage } from './pages/ClientsPage'
+import { ClientDetailPage } from './pages/ClientDetailPage'
 import { SpaBoard } from './pages/manager/SpaBoard'
 import { RoutePage } from './pages/driver/RoutePage'
 import { WasherPage } from './pages/washer/WasherPage'
@@ -77,6 +78,14 @@ export default function App() {
             element={
               <RequireAuth roles={['admin', 'agent', 'manager']}>
                 <AppShell><ClientsPage /></AppShell>
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/clients/:id"
+            element={
+              <RequireAuth roles={['admin', 'agent', 'manager']}>
+                <AppShell><ClientDetailPage /></AppShell>
               </RequireAuth>
             }
           />

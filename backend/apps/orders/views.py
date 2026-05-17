@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
 from django.db.models import Q
 from .models import ServiceOrder, PriceConfig, Treatment
 from .serializers import (
@@ -12,12 +13,26 @@ from .serializers import (
 from apps.users.permissions import IsAdmin, IsAdminOrAgentOrManager
 
 
+class ServiceOrderFilter(django_filters.rest_framework.FilterSet):
+    status = django_filters.CharFilter(method='filter_status_multi')
+    payment_status = django_filters.CharFilter()
+    origin = django_filters.CharFilter()
+
+    class Meta:
+        model = ServiceOrder
+        fields = ['status', 'payment_status', 'origin']
+
+    def filter_status_multi(self, queryset, name, value):
+        statuses = [s.strip() for s in value.split(',') if s.strip()]
+        return queryset.filter(status__in=statuses) if statuses else queryset
+
+
 class ServiceOrderListCreateView(generics.ListCreateAPIView):
     serializer_class = ServiceOrderSerializer
     permission_classes = [IsAdminOrAgentOrManager]
     filter_backends = [filters.SearchFilter, DjangoFilterBackend, filters.OrderingFilter]
     search_fields = ['folio', 'client__name', 'client__phone']
-    filterset_fields = ['status', 'payment_status', 'origin']
+    filterset_class = ServiceOrderFilter
     ordering_fields = ['created_at', 'updated_at']
 
     def get_queryset(self):
@@ -67,11 +82,11 @@ class OrderTrackingView(APIView):
                 {'error': 'Se requieren nombre y teléfono'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        normalized_phone = phone.replace(' ', '').replace('-', '')
-        first_name = name.split()[0] if name else name
+        phone_digits = ''.join(c for c in phone if c.isdigit())
+        phone_suffix = phone_digits[-10:] if len(phone_digits) >= 10 else phone_digits
         orders = ServiceOrder.objects.filter(
-            client__phone__icontains=normalized_phone,
-            client__name__icontains=first_name,
+            client__phone__endswith=phone_suffix,
+            client__name__icontains=name,
         ).select_related('client').prefetch_related('rugs')
         return Response(OrderTrackingSerializer(orders, many=True).data)
 

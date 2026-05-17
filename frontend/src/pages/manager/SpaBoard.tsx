@@ -16,13 +16,20 @@ export function SpaBoard() {
   const { data: orders = [] } = useQuery({
     queryKey: ['orders', 'active'],
     queryFn: () =>
-      getOrders({ status: 'received_at_spa,washing,ready' }).then((r) => r.data),
+      getOrders({ status: 'received_at_spa,washing,ready' }).then((r) => {
+        const d = r.data as any
+        return (Array.isArray(d) ? d : d.results ?? []) as typeof d
+      }),
     refetchInterval: 20000,
   })
 
   const { data: washers = [] } = useQuery({
     queryKey: ['users-washers'],
-    queryFn: () => getUsers().then((r) => r.data.filter((u) => u.role === 'washer')),
+    queryFn: () =>
+      getUsers().then((r) => {
+        const d = r.data as any
+        return (Array.isArray(d) ? d : d.results ?? []) as typeof d
+      }),
   })
 
   const allOrderIds = orders.map((o) => o.id)
@@ -30,7 +37,10 @@ export function SpaBoard() {
   const rugQueries = useQuery({
     queryKey: ['all-active-rugs', allOrderIds],
     queryFn: async () => {
-      const results = await Promise.all(orders.map((o) => getOrderRugs(o.id).then((r) => r.data)))
+      const results = await Promise.all(orders.map((o) => getOrderRugs(o.id).then((r) => {
+        const d = r.data as any
+        return Array.isArray(d) ? d : d.results ?? []
+      })))
       return results.flat()
     },
     enabled: orders.length > 0,
