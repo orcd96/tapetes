@@ -35,7 +35,7 @@ export function OrdersPage() {
       getOrders({
         ...(statusFilter && { status: statusFilter }),
         ...(search && { search }),
-      }).then((r) => r.data),
+      }).then((r) => Array.isArray(r.data) ? r.data : (r.data as any).results ?? []),
   })
 
   const fmt = (n: string) =>

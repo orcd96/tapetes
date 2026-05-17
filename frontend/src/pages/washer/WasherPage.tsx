@@ -13,7 +13,7 @@ export function WasherPage() {
 
   const { data: rugs = [], isLoading } = useQuery({
     queryKey: ['washer-rugs'],
-    queryFn: () => getWasherRugs().then((r) => r.data),
+    queryFn: () => getWasherRugs().then((r) => Array.isArray(r.data) ? r.data : (r.data as any).results ?? []),
     refetchInterval: 30000,
   })
 

@@ -19,7 +19,7 @@ export function PricesPage() {
 
   const { data: prices = [] } = useQuery({
     queryKey: ['prices'],
-    queryFn: () => getPrices().then((r) => r.data),
+    queryFn: () => getPrices().then((r) => Array.isArray(r.data) ? r.data : (r.data as any).results ?? []),
   })
 
   const groupedByFiber = prices.reduce((acc, p) => {

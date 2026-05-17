@@ -9,7 +9,7 @@ export function ClientsPage() {
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['clients', search],
-    queryFn: () => getClients(search).then((r) => r.data),
+    queryFn: () => getClients(search).then((r) => Array.isArray(r.data) ? r.data : (r.data as any).results ?? []),
   })
 
   return (
