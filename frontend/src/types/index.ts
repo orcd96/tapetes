@@ -11,6 +11,14 @@ export interface User {
   is_active?: boolean
 }
 
+export interface ClientAddress {
+  id: number
+  label: string
+  address: string
+  is_default: boolean
+  created_at: string
+}
+
 export interface Client {
   id: number
   name: string
@@ -18,6 +26,7 @@ export interface Client {
   email: string
   default_address: string
   notes: string
+  addresses: ClientAddress[]
   created_at: string
 }
 

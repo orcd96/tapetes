@@ -24,3 +24,27 @@ class Client(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.phone})"
+
+
+class ClientAddress(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='addresses')
+    label = models.CharField(max_length=100, blank=True, help_text='Ej: Casa, Oficina, Bodega')
+    address = models.TextField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_default', 'label']
+        verbose_name = 'Domicilio'
+        verbose_name_plural = 'Domicilios'
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            ClientAddress.objects.filter(
+                client=self.client, is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        label = self.label or 'Domicilio'
+        return f"{label} — {self.client.name}"

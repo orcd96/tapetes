@@ -1,6 +1,6 @@
 import api from './client'
 import type {
-  User, Client, ServiceOrder, Rug, RugPhoto, Pickup, Delivery,
+  User, Client, ClientAddress, ServiceOrder, Rug, RugPhoto, Pickup, Delivery,
   Payment, PriceConfig, DashboardData, TokenPair
 } from '../types'
 
@@ -31,6 +31,14 @@ export const updateClient = (id: number, data: Partial<Client>) =>
   api.patch<Client>(`/clients/${id}/`, data)
 export const getClientOrders = (id: number) =>
   api.get<ServiceOrder[]>(`/clients/${id}/orders/`)
+export const getClientAddresses = (clientId: number) =>
+  api.get<ClientAddress[]>(`/clients/${clientId}/addresses/`)
+export const createClientAddress = (clientId: number, data: Partial<ClientAddress>) =>
+  api.post<ClientAddress>(`/clients/${clientId}/addresses/`, data)
+export const updateClientAddress = (clientId: number, addrId: number, data: Partial<ClientAddress>) =>
+  api.patch<ClientAddress>(`/clients/${clientId}/addresses/${addrId}/`, data)
+export const deleteClientAddress = (clientId: number, addrId: number) =>
+  api.delete(`/clients/${clientId}/addresses/${addrId}/`)
 
 // Orders
 export const getOrders = (params?: Record<string, string>) =>
@@ -88,3 +96,10 @@ export const createPrice = (data: Partial<PriceConfig>) =>
 export const getDashboard = () => api.get<DashboardData>('/dashboard/')
 export const getReports = (params?: { from?: string; to?: string }) =>
   api.get('/dashboard/reports/', { params })
+
+// Notifications / WhatsApp
+export const getWhatsAppMessage = (orderId: number, event: string) =>
+  api.get<{ message: string; event: string; folio: string; client_phone: string }>(
+    '/notifications/whatsapp/',
+    { params: { order_id: orderId, event } },
+  )

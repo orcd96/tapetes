@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Plus, Camera, Truck, Package } from 'lucide-react'
+import { ArrowLeft, Plus, Camera, Truck, Package, MessageCircle, Copy, Check } from 'lucide-react'
 import {
   getOrder, getOrderRugs, updateOrderStatus,
   getOrderPayments, createPayment, createRug,
-  updateRugStatus, uploadRugPhoto, createPickup, createDelivery, getDrivers
+  updateRugStatus, uploadRugPhoto, createPickup, createDelivery, getDrivers,
+  getWhatsAppMessage,
 } from '../api/endpoints'
 import { useAuthStore } from '../stores/auth'
 import { Button } from '../components/ui/Button'
@@ -41,6 +42,7 @@ export function OrderDetailPage() {
   const [showSchedulePickup, setShowSchedulePickup] = useState(false)
   const [showScheduleDelivery, setShowScheduleDelivery] = useState(false)
   const [selectedRug, setSelectedRug] = useState<Rug | null>(null)
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null)
 
   const { data: order, isLoading: loadingOrder } = useQuery({
     queryKey: ['order', orderId],
@@ -127,7 +129,7 @@ export function OrderDetailPage() {
                 if (nextStatus === 'delivery_scheduled') {
                   setShowScheduleDelivery(true)
                 } else {
-                  statusMutation.mutate(nextStatus)
+                  setPendingStatus(nextStatus)
                 }
               }}
               loading={statusMutation.isPending}
@@ -135,6 +137,15 @@ export function OrderDetailPage() {
               {nextStatus === 'delivery_scheduled' ? <Package size={14} /> : null}
               → {STATUS_LABELS[nextStatus]}
             </Button>
+          )}
+          {canChangeStatus && (
+            <button
+              className="mt-2 flex w-full items-center justify-center gap-1 text-xs text-green-700 hover:text-green-900"
+              onClick={() => setPendingStatus(order.status)}
+            >
+              <MessageCircle size={12} />
+              Mensaje WhatsApp actual
+            </button>
           )}
         </div>
 
@@ -273,7 +284,97 @@ export function OrderDetailPage() {
           onClose={() => { setSelectedRug(null); qc.invalidateQueries({ queryKey: ['order-rugs', orderId] }) }}
         />
       )}
+
+      {pendingStatus && (
+        <WhatsAppModal
+          orderId={orderId}
+          event={pendingStatus}
+          onClose={() => setPendingStatus(null)}
+          onConfirmAdvance={
+            pendingStatus !== order.status
+              ? () => {
+                  statusMutation.mutate(pendingStatus)
+                  setPendingStatus(null)
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
+  )
+}
+
+function WhatsAppModal({
+  orderId,
+  event,
+  onClose,
+  onConfirmAdvance,
+}: {
+  orderId: number
+  event: string
+  onClose: () => void
+  onConfirmAdvance?: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['whatsapp-message', orderId, event],
+    queryFn: () => getWhatsAppMessage(orderId, event).then((r) => r.data),
+  })
+
+  const handleCopy = () => {
+    if (!data?.message) return
+    navigator.clipboard.writeText(data.message).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Mensaje de WhatsApp">
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="py-6 text-center text-gray-400">Generando mensaje...</div>
+        ) : data ? (
+          <>
+            <div className="rounded-lg bg-[#dcf8c6] p-4 text-sm text-gray-800 shadow-inner">
+              <pre className="whitespace-pre-wrap font-sans leading-relaxed">{data.message}</pre>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>Para: {data.client_phone}</span>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleCopy}
+                className="flex-1"
+              >
+                {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
+                {copied ? '¡Copiado!' : 'Copiar mensaje'}
+              </Button>
+              <a
+                href={`https://wa.me/52${data.client_phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(data.message)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600"
+              >
+                <MessageCircle size={14} />
+                Abrir en WhatsApp
+              </a>
+            </div>
+          </>
+        ) : null}
+
+        {onConfirmAdvance && (
+          <div className="border-t border-gray-200 pt-3">
+            <Button onClick={onConfirmAdvance} className="w-full">
+              Confirmar avance de estado
+            </Button>
+          </div>
+        )}
+      </div>
+    </Modal>
   )
 }
 
