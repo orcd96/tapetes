@@ -32,6 +32,18 @@ services:
     env_file:
       - .env
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_PROXY_TARGET=http://backend:8000
+    depends_on:
+      - backend
+
   celery:
     build: ./backend
     command: celery -A config worker -l info
