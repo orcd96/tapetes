@@ -6,10 +6,10 @@ import type {
 
 // Auth
 export const login = (username: string, password: string) =>
-  api.post<TokenPair>('/auth/login/', { username, password })
+  api.post<TokenPair>('/auth/token/', { username, password })
 
 export const refreshToken = (refresh: string) =>
-  api.post<{ access: string }>('/auth/refresh/', { refresh })
+  api.post<{ access: string }>('/auth/token/refresh/', { refresh })
 
 // Me
 export const getMe = () => api.get<User>('/users/me/')

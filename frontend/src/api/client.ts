@@ -20,7 +20,7 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
       try {
-        const { data } = await axios.post('/api/auth/refresh/', { refresh })
+        const { data } = await axios.post('/api/auth/token/refresh/', { refresh })
         localStorage.setItem('access_token', data.access)
         original.headers.Authorization = `Bearer ${data.access}`
         return api(original)
